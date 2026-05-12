@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>和弦听音训练 · 钢琴音色</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: #0f0f0f;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 680px;
+            background: #1a1a1a;
+            border-radius: 28px;
+            padding: 32px 28px;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+        }
+
+        .hidden { display: none; }
+
+        .start-btn {
+            width: 100%;
+            background: #2c2c2c;
+            border: 1px solid #3a3a3a;
+            border-radius: 48px;
+            padding: 16px 20px;
+            font-size: 1.6rem;
+            font-weight: 500;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+            text-align: center;
+        }
+        .start-btn:hover { background: #333; border-color: #555; }
+        .start-btn:active { transform: scale(0.98); }
+
+        .quiz-header { display: flex; justify-content: flex-end; margin-bottom: 28px; }
+        .menu-link {
+            background: none;
+            border: none;
+            font-size: 0.9rem;
+            color: #888;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        .menu-link:hover { color: #ccc; background: #252525; }
+
+        .play-btn {
+            width: 100%;
+            background: #252525;
+            border: 1px solid #3a3a3a;
+            border-radius: 60px;
+            padding: 14px 20px;
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #ddd;
+            cursor: pointer;
+            margin-bottom: 32px;
+            font-family: inherit;
+        }
+        .play-btn:active { background: #2e2e2e; transform: scale(0.98); }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .option-btn {
+            background: #202020;
+            border: 1px solid #333;
+            border-radius: 44px;
+            padding: 14px 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #cfcfcf;
+            cursor: pointer;
+            text-align: center;
+            font-family: inherit;
+        }
+        .option-btn:active { background: #2c2c2c; transform: scale(0.97); }
+
+        .feedback-area {
+            min-height: 56px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 450;
+        }
+        .feedback-error { color: #e0856e; }
+        .feedback-correct { color: #8bc48a; }
+
+        .construction-area {
+            background: #151515;
+            border-radius: 20px;
+            padding: 20px 16px;
+            margin-bottom: 24px;
+            text-align: center;
+            border: 1px solid #2a2a2a;
+        }
+        .construction-title {
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            color: #6a6a6a;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+        .construction-content {
+            font-size: 1rem;
+            font-family: 'SF Mono', 'Menlo', monospace;
+            color: #d4d4d4;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+
+        .bottom-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .bottom-btn {
+            background: #202020;
+            border: 1px solid #333;
+            border-radius: 40px;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            font-weight: 450;
+            color: #bbb;
+            cursor: pointer;
+            min-width: 100px;
+            font-family: inherit;
+        }
+        .bottom-btn:active { background: #2a2a2a; transform: scale(0.97); }
+
+        @media (max-width: 500px) {
+            .container { padding: 24px 18px; }
+            .option-btn { font-size: 0.85rem; padding: 12px 6px; }
+            .construction-content { font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="appRoot">
+    <div id="menuScreen">
+        <button class="start-btn" id="startBtn">开始</button>
+    </div>
+
+    <div id="quizScreen" class="hidden">
+        <div class="quiz-header">
+            <button class="menu-link" id="returnToMenuBtn">← 菜单</button>
+        </div>
+
+        <button class="play-btn" id="playChordBtn">▶ 播放和弦</button>
+
+        <div class="options-grid" id="optionsContainer"></div>
+
+        <div class="feedback-area" id="feedbackArea"></div>
+
+        <div class="construction-area" id="constructionArea">
+            <div class="construction-title">构成音 · 和弦标记</div>
+            <div class="construction-content" id="constructionContent">—</div>
+        </div>
+
+        <div class="bottom-actions">
+            <button class="bottom-btn" id="quizMenuBtn">菜单</button>
+            <button class="bottom-btn" id="nextQuestionBtn">下一题</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ---------- 纯净钢琴音色 ----------
+        let audioCtx = null;
+        function initAudio() {
+            if (audioCtx) return audioCtx;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            return audioCtx;
+        }
+
+        function playTone(frequency, startTime = 0, duration = 2.6, volume = 0.16) {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const start = now + startTime;
+            
+            const osc = audioCtx.createOscillator();
+            osc.type = 'triangle';
+            osc.frequency.value = frequency;
+            
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0;
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            const attack = 0.01;
+            const decay = 0.28;
+            const sustainLevel = volume * 0.55;
+            const release = 0.9;
+            
+            gainNode.gain.setValueAtTime(0, start);
+            gainNode.gain.linearRampToValueAtTime(volume, start + attack);
+            gainNode.gain.exponentialRampToValueAtTime(sustainLevel, start + decay);
+            gainNode.gain.setValueAtTime(sustainLevel, start + duration - release);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+            
+            osc.start(start);
+            osc.stop(start + duration);
+        }
+
+        function playChord(rootFreq, intervals, duration = 2.5, volume = 0.13) {
+            if (!audioCtx) return;
+            const spread = 0.012;
+            intervals.forEach((ratio, idx) => {
+                const offset = idx * spread * 0.6;
+                const freq = rootFreq * ratio;
+                playTone(freq, offset, duration, volume);
+            });
+        }
+
+        function playArpeggioThenChord(rootFreq, intervals, baseDelay = 0) {
+            if (!audioCtx) return;
+            const noteDuration = 0.52;
+            const gap = 0.22;
+            let currentTime = baseDelay;
+            intervals.forEach((ratio, idx) => {
+                const freq = rootFreq * ratio;
+                playTone(freq, currentTime, noteDuration, 0.18);
+                currentTime += gap;
+            });
+            const chordStart = currentTime + 0.22;
+            intervals.forEach(ratio => {
+                const freq = rootFreq * ratio;
+                playTone(freq, chordStart, 1.8, 0.16);
+            });
+        }
+
+        function playChordNormal(rootFreq, intervals) {
+            if (!audioCtx) return;
+            playChord(rootFreq, intervals, 2.4, 0.14);
+        }
+        
+        // ---------- 和弦库 ----------
+        const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        
+        function getNoteNameFromRoot(rootName, semitoneOffset) {
+            const rootIdx = noteNames.indexOf(rootName);
+            if (rootIdx === -1) return '?';
+            const targetIdx = (rootIdx + semitoneOffset) % 12;
+            return noteNames[targetIdx];
+        }
+
+        function getEnglishChordSymbol(rootName, chordDef) {
+            const rootDisplay = rootName;
+            const symbol = chordDef.englishSymbol;
+            return `${rootDisplay}${symbol}`;
+        }
+
+        function buildConstructionText(rootName, chordDef) {
+            if (!chordDef.intervalsSemitone) return chordDef.construction;
+            const notes = chordDef.intervalsSemitone.map(semi => getNoteNameFromRoot(rootName, semi));
+            const parts = chordDef.intervalNames.map((name, idx) => `${name}(${notes[idx]})`);
+            const englishMark = getEnglishChordSymbol(rootName, chordDef);
+            // 格式: "Cm7 · 根音(C) + 小三度(Eb) + 纯五度(G) + 小七度(Bb)"
+            return `${englishMark}<br>${parts.join(' + ')}`;
+        }
+
+        const chordDefinitions = [
+            { id: 'maj', name: '大三和弦', englishSymbol: '', intervals: [1, 1.25, 1.5], intervalsSemitone: [0,4,7], intervalNames: ['根音', '大三度', '纯五度'] },
+            { id: 'min', name: '小三和弦', englishSymbol: 'm', intervals: [1, 1.2, 1.5], intervalsSemitone: [0,3,7], intervalNames: ['根音', '小三度', '纯五度'] },
+            { id: 'aug', name: '增三和弦', englishSymbol: 'aug', intervals: [1, 1.25, 1.5874], intervalsSemitone: [0,4,8], intervalNames: ['根音', '大三度', '增五度'] },
+            { id: 'dim', name: '减三和弦', englishSymbol: 'dim', intervals: [1, 1.2, 1.4286], intervalsSemitone: [0,3,6], intervalNames: ['根音', '小三度', '减五度'] },
+            { id: 'maj7', name: '大七和弦', englishSymbol: 'maj7', intervals: [1, 1.25, 1.5, 1.875], intervalsSemitone: [0,4,7,11], intervalNames: ['根音', '大三度', '纯五度', '大七度'] },
+            { id: 'dom7', name: '属七和弦', englishSymbol: '7', intervals: [1, 1.25, 1.5, 1.75], intervalsSemitone: [0,4,7,10], intervalNames: ['根音', '大三度', '纯五度', '小七度'] },
+            { id: 'min7', name: '小七和弦', englishSymbol: 'm7', intervals: [1, 1.2, 1.5, 1.75], intervalsSemitone: [0,3,7,10], intervalNames: ['根音', '小三度', '纯五度', '小七度'] },
+            { id: 'minMaj7', name: '小大七和弦', englishSymbol: 'm(maj7)', intervals: [1, 1.2, 1.5, 1.875], intervalsSemitone: [0,3,7,11], intervalNames: ['根音', '小三度', '纯五度', '大七度'] },
+            { id: 'halfDim7', name: '半减七和弦', englishSymbol: 'm7b5', intervals: [1, 1.2, 1.4286, 1.75], intervalsSemitone: [0,3,6,10], intervalNames: ['根音', '小三度', '减五度', '小七度'] },
+            { id: 'dim7', name: '减七和弦', englishSymbol: 'dim7', intervals: [1, 1.2, 1.4286, 1.7143], intervalsSemitone: [0,3,6,9], intervalNames: ['根音', '小三度', '减五度', '减七度'] },
+            { id: 'augMaj7', name: '增大七和弦', englishSymbol: 'augMaj7', intervals: [1, 1.25, 1.5874, 1.875], intervalsSemitone: [0,4,8,11], intervalNames: ['根音', '大三度', '增五度', '大七度'] },
+            { id: 'maj9', name: '大九和弦', englishSymbol: 'maj9', intervals: [1, 1.25, 1.5, 1.875, 2.25], intervalsSemitone: [0,4,7,11,14], intervalNames: ['根音', '大三度', '纯五度', '大七度', '大九度'] },
+            { id: 'dom9', name: '属九和弦', englishSymbol: '9', intervals: [1, 1.25, 1.5, 1.75, 2.25], intervalsSemitone: [0,4,7,10,14], intervalNames: ['根音', '大三度', '纯五度', '小七度', '大九度'] },
+            { id: 'min9', name: '小九和弦', englishSymbol: 'm9', intervals: [1, 1.2, 1.5, 1.75, 2.25], intervalsSemitone: [0,3,7,10,14], intervalNames: ['根音', '小三度', '纯五度', '小七度', '大九度'] },
+            { id: 'minMaj9', name: '小大九和弦', englishSymbol: 'm(maj9)', intervals: [1, 1.2, 1.5, 1.875, 2.25], intervalsSemitone: [0,3,7,11,14], intervalNames: ['根音', '小三度', '纯五度', '大七度', '大九度'] },
+            { id: 'halfDim9', name: '半减九和弦', englishSymbol: 'm9b5', intervals: [1, 1.2, 1.4286, 1.75, 2.25], intervalsSemitone: [0,3,6,10,14], intervalNames: ['根音', '小三度', '减五度', '小七度', '大九度'] },
+            { id: 'dim9', name: '减九和弦', englishSymbol: 'dim9', intervals: [1, 1.2, 1.4286, 1.7143, 2.25], intervalsSemitone: [0,3,6,9,14], intervalNames: ['根音', '小三度', '减五度', '减七度', '大九度'] },
+            { id: 'aug9', name: '增大九和弦', englishSymbol: 'aug9', intervals: [1, 1.25, 1.5874, 1.875, 2.25], intervalsSemitone: [0,4,8,11,14], intervalNames: ['根音', '大三度', '增五度', '大七度', '大九度'] },
+            { id: 'dom7b9', name: '属七降九和弦', englishSymbol: '7b9', intervals: [1, 1.25, 1.5, 1.75, 2.1667], intervalsSemitone: [0,4,7,10,13], intervalNames: ['根音', '大三度', '纯五度', '小七度', '降九度'] },
+            { id: 'dom7#9', name: '属七升九和弦', englishSymbol: '7#9', intervals: [1, 1.25, 1.5, 1.75, 2.3333], intervalsSemitone: [0,4,7,10,15], intervalNames: ['根音', '大三度', '纯五度', '小七度', '升九度'] },
+            { id: 'sus2', name: '挂二和弦', englishSymbol: 'sus2', intervals: [1, 1.125, 1.5], intervalsSemitone: [0,2,7], intervalNames: ['根音', '大二度', '纯五度'] },
+            { id: 'sus4', name: '挂四和弦', englishSymbol: 'sus4', intervals: [1, 1.333, 1.5], intervalsSemitone: [0,5,7], intervalNames: ['根音', '纯四度', '纯五度'] },
+            { id: 'add9', name: '加九和弦', englishSymbol: 'add9', intervals: [1, 1.25, 1.5, 2.25], intervalsSemitone: [0,4,7,14], intervalNames: ['根音', '大三度', '纯五度', '大九度'] },
+            { id: '6', name: '六和弦', englishSymbol: '6', intervals: [1, 1.25, 1.5, 1.6667], intervalsSemitone: [0,4,7,9], intervalNames: ['根音', '大三度', '纯五度', '大六度'] },
+            { id: '69', name: '六九和弦', englishSymbol: '6/9', intervals: [1, 1.25, 1.5, 1.6667, 2.25], intervalsSemitone: [0,4,7,9,14], intervalNames: ['根音', '大三度', '纯五度', '大六度', '大九度'] }
+        ];
+
+        const rootNotes = [
+            { name: 'C', freq: 261.63 }, { name: 'C#', freq: 277.18 }, { name: 'D', freq: 293.66 },
+            { name: 'D#', freq: 311.13 }, { name: 'E', freq: 329.63 }, { name: 'F', freq: 349.23 },
+            { name: 'F#', freq: 369.99 }, { name: 'G', freq: 392.00 }, { name: 'G#', freq: 415.30 },
+            { name: 'A', freq: 440.00 }, { name: 'A#', freq: 466.16 }, { name: 'B', freq: 493.88 }
+        ];
+
+        let currentRoot = null;
+        let currentChord = null;
+        let currentOptions = [];
+        let currentAnswerId = '';
+        let isAnswered = false;
+        let useArpeggioMode = false;
+
+        // DOM
+        const menuScreen = document.getElementById('menuScreen');
+        const quizScreen = document.getElementById('quizScreen');
+        const startBtn = document.getElementById('startBtn');
+        const returnToMenuBtn = document.getElementById('returnToMenuBtn');
+        const quizMenuBtn = document.getElementById('quizMenuBtn');
+        const nextQuestionBtn = document.getElementById('nextQuestionBtn');
+        const playChordBtn = document.getElementById('playChordBtn');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const feedbackArea = document.getElementById('feedbackArea');
+        const constructionContent = document.getElementById('constructionContent');
+
+        function generateRandomQuestion() {
+            const rootIdx = Math.floor(Math.random() * rootNotes.length);
+            currentRoot = { ...rootNotes[rootIdx] };
+            const chordIdx = Math.floor(Math.random() * chordDefinitions.length);
+            currentChord = { ...chordDefinitions[chordIdx] };
+            currentAnswerId = currentChord.id;
+
+            let candidates = chordDefinitions.filter(c => c.id !== currentAnswerId);
+            for (let i = candidates.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+            }
+            let distractor = candidates.slice(0, 3);
+            let optionItems = [...distractor, { id: currentChord.id, name: currentChord.name }];
+            for (let i = optionItems.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [optionItems[i], optionItems[j]] = [optionItems[j], optionItems[i]];
+            }
+            currentOptions = optionItems.map(opt => ({ id: opt.id, name: opt.name }));
+        }
+
+        function playCurrentChordWithMode() {
+            if (!currentRoot || !currentChord) return;
+            const resumeAndPlay = () => {
+                if (useArpeggioMode) {
+                    playArpeggioThenChord(currentRoot.freq, currentChord.intervals, 0);
+                } else {
+                    playChordNormal(currentRoot.freq, currentChord.intervals);
+                }
+            };
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().then(resumeAndPlay).catch(e=>console.log);
+            } else {
+                resumeAndPlay();
+            }
+        }
+
+        function updateConstructionDisplay() {
+            if (!currentRoot || !currentChord) return;
+            const detailed = buildConstructionText(currentRoot.name, currentChord);
+            constructionContent.innerHTML = detailed;
+        }
+
+        function renderOptions() {
+            optionsContainer.innerHTML = '';
+            currentOptions.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = opt.name;
+                btn.dataset.id = opt.id;
+                btn.addEventListener('click', (e) => {
+                    if (isAnswered) return;
+                    handleAnswer(opt.id, btn);
+                });
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function clearOptionsHighlight() {
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.style.background = '#202020';
+                btn.style.borderColor = '#333';
+            });
+        }
+
+        function handleAnswer(selectedId, btnElement) {
+            if (isAnswered) return;
+            const isCorrect = (selectedId === currentAnswerId);
+            if (isCorrect) {
+                isAnswered = true;
+                useArpeggioMode = true;
+                feedbackArea.innerHTML = '<div class="feedback-correct">✓ 正确</div>';
+                updateConstructionDisplay();
+                clearOptionsHighlight();
+                btnElement.style.background = '#2c4a2e';
+                btnElement.style.borderColor = '#5e8a5e';
+                playCurrentChordWithMode();
+            } else {
+                feedbackArea.innerHTML = '<div class="feedback-error">✗ 错误，再听一次</div>';
+                playCurrentChordWithMode();
+                btnElement.style.transform = 'scale(0.96)';
+                setTimeout(() => { if(btnElement) btnElement.style.transform = ''; }, 130);
+                constructionContent.innerHTML = '—';
+                btnElement.style.background = '#5a2a2a';
+                setTimeout(() => {
+                    if(btnElement) btnElement.style.background = '#202020';
+                }, 200);
+            }
+        }
+
+        function loadNewQuestion() {
+            generateRandomQuestion();
+            renderOptions();
+            isAnswered = false;
+            useArpeggioMode = false;
+            feedbackArea.innerHTML = '';
+            constructionContent.innerHTML = '—';
+            clearOptionsHighlight();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().then(() => playCurrentChordWithMode()).catch(e=>console.log);
+            } else {
+                playCurrentChordWithMode();
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(e=>console.log);
+            }
+            menuScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            loadNewQuestion();
+        }
+
+        function showMenu() {
+            menuScreen.classList.remove('hidden');
+            quizScreen.classList.add('hidden');
+        }
+
+        startBtn.addEventListener('click', startGame);
+        returnToMenuBtn.addEventListener('click', showMenu);
+        quizMenuBtn.addEventListener('click', showMenu);
+        nextQuestionBtn.addEventListener('click', () => { loadNewQuestion(); });
+        playChordBtn.addEventListener('click', () => {
+            if (currentRoot && currentChord) {
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume().then(() => playCurrentChordWithMode());
+                } else {
+                    playCurrentChordWithMode();
+                }
+            }
+        });
+
+        window.addEventListener('load', () => { initAudio(); });
+    })();
+</script>
+</body>
+</html>
