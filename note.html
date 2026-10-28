@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>听音选音 · 音高辨别训练</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: #0f0f0f;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 640px;
+            background: #1a1a1a;
+            border-radius: 28px;
+            padding: 32px 28px;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+        }
+
+        .hidden { display: none; }
+
+        .start-btn {
+            width: 100%;
+            background: #2c2c2c;
+            border: 1px solid #3a3a3a;
+            border-radius: 48px;
+            padding: 16px 20px;
+            font-size: 1.6rem;
+            font-weight: 500;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+            text-align: center;
+        }
+        .start-btn:hover { background: #333; border-color: #555; }
+        .start-btn:active { transform: scale(0.98); }
+
+        .quiz-header { display: flex; justify-content: flex-end; margin-bottom: 24px; }
+        .menu-link {
+            background: none;
+            border: none;
+            font-size: 0.9rem;
+            color: #888;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        .menu-link:hover { color: #ccc; background: #252525; }
+
+        .play-btn {
+            width: 100%;
+            background: #252525;
+            border: 1px solid #3a3a3a;
+            border-radius: 60px;
+            padding: 14px 20px;
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #ddd;
+            cursor: pointer;
+            margin-bottom: 24px;
+            font-family: inherit;
+        }
+        .play-btn:active { background: #2e2e2e; transform: scale(0.98); }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .option-btn {
+            background: #202020;
+            border: 1px solid #333;
+            border-radius: 44px;
+            padding: 14px 4px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #cfcfcf;
+            cursor: pointer;
+            text-align: center;
+            font-family: 'SF Mono', 'Menlo', monospace;
+        }
+        .option-btn:active { background: #2c2c2c; transform: scale(0.97); }
+        .option-btn.disabled {
+            opacity: 0.35;
+            pointer-events: none;
+        }
+        .option-btn.correct {
+            background: #2c4a2e;
+            border-color: #5e8a5e;
+            color: #b8ffa0;
+        }
+
+        .feedback-area {
+            min-height: 52px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 450;
+            font-size: 1rem;
+        }
+        .feedback-high { color: #ffaa66; }
+        .feedback-low { color: #66aaff; }
+        .feedback-correct { color: #8bc48a; }
+        .feedback-reveal { color: #c9a0ff; }
+
+        .bottom-actions {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+        }
+
+        .bottom-btn {
+            background: #202020;
+            border: 1px solid #333;
+            border-radius: 40px;
+            padding: 10px 20px;
+            font-size: 0.85rem;
+            font-weight: 450;
+            color: #bbb;
+            cursor: pointer;
+            min-width: 90px;
+            font-family: inherit;
+        }
+        .bottom-btn:active { background: #2a2a2a; transform: scale(0.97); }
+        .reveal-btn {
+            background: #2a1e2e;
+            border-color: #5a3a6e;
+            color: #d0b0ff;
+        }
+
+        @media (max-width: 500px) {
+            .container { padding: 24px 18px; }
+            .option-btn { font-size: 0.9rem; padding: 12px 2px; }
+            .options-grid { gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="appRoot">
+    <div id="menuScreen">
+        <button class="start-btn" id="startBtn">开始</button>
+    </div>
+
+    <div id="quizScreen" class="hidden">
+        <div class="quiz-header">
+            <button class="menu-link" id="returnToMenuBtn">← 菜单</button>
+        </div>
+
+        <button class="play-btn" id="playBtn">▶ 再听一遍</button>
+
+        <div class="options-grid" id="optionsContainer"></div>
+
+        <div class="feedback-area" id="feedbackArea"></div>
+
+        <div class="bottom-actions">
+            <button class="bottom-btn" id="quizMenuBtn">菜单</button>
+            <button class="bottom-btn reveal-btn" id="revealBtn">直接看答案</button>
+            <button class="bottom-btn" id="nextQuestionBtn">下一题</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ---------- 合成器音色 (非正弦波) ----------
+        let audioCtx = null;
+        function initAudio() {
+            if (audioCtx) return audioCtx;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            return audioCtx;
+        }
+
+        function playTone(frequency, duration = 1.8, volume = 0.18) {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const start = now;
+            
+            const osc = audioCtx.createOscillator();
+            osc.type = 'triangle';   // 三角波，温暖，不易产生正弦波那种干扰感
+            osc.frequency.value = frequency;
+            
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0;
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            const attack = 0.008;
+            const decay = 0.22;
+            const sustainLevel = volume * 0.6;
+            const release = 0.8;
+            
+            gainNode.gain.setValueAtTime(0, start);
+            gainNode.gain.linearRampToValueAtTime(volume, start + attack);
+            gainNode.gain.exponentialRampToValueAtTime(sustainLevel, start + decay);
+            gainNode.gain.setValueAtTime(sustainLevel, start + duration - release);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+            
+            osc.start(start);
+            osc.stop(start + duration);
+        }
+
+        // ---------- 音高数据 ----------
+        // 中央C = C4 = 261.63 Hz
+        // 上下三个八度内的所有半音 (C2 到 C7)
+        const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        // 生成 C2 ~ C7 范围内所有半音 (共 5 个八度，60 个半音)
+        const ALL_NOTES = [];
+        for (let octave = 2; octave <= 6; octave++) {
+            for (let i = 0; i < 12; i++) {
+                const name = NOTE_NAMES[i];
+                const freq = 261.63 * Math.pow(2, (octave - 4) + (i / 12));
+                ALL_NOTES.push({
+                    name: name,
+                    octave: octave,
+                    fullName: `${name}${octave}`,
+                    freq: freq,
+                });
+            }
+        }
+
+        // 选项：12 个音名 (不含八度，只显示音名)
+        const OPTION_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+        // ---------- 状态 ----------
+        let currentNote = null;          // 当前目标音 (来自 ALL_NOTES)
+        let currentAnswerName = '';      // 当前目标的音名 (不含八度)
+        let isAnswered = false;          // 答对后锁定
+        let isRevealed = false;          // 是否已看答案
+
+        // DOM
+        const menuScreen = document.getElementById('menuScreen');
+        const quizScreen = document.getElementById('quizScreen');
+        const startBtn = document.getElementById('startBtn');
+        const returnToMenuBtn = document.getElementById('returnToMenuBtn');
+        const quizMenuBtn = document.getElementById('quizMenuBtn');
+        const nextQuestionBtn = document.getElementById('nextQuestionBtn');
+        const playBtn = document.getElementById('playBtn');
+        const revealBtn = document.getElementById('revealBtn');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const feedbackArea = document.getElementById('feedbackArea');
+
+        // ---------- 工具函数 ----------
+        function randomChoice(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        // 比较两个音高: 返回 1 (猜测音太高), -1 (猜测音太低), 0 (相同)
+        function comparePitch(guessNote, targetNote) {
+            if (guessNote.freq > targetNote.freq) return 1;   // 猜高了
+            if (guessNote.freq < targetNote.freq) return -1;  // 猜低了
+            return 0;
+        }
+
+        // 获取某个音名在给定目标八度附近的可能音高 (用于比较)
+        // 当用户选择音名时，我们把它映射到与目标音最近的八度
+        function getGuessNoteByName(name, targetNote) {
+            // 在 ALL_NOTES 中找同名且八度最接近目标音的
+            let best = null;
+            let minDiff = Infinity;
+            for (const note of ALL_NOTES) {
+                if (note.name === name) {
+                    const diff = Math.abs(note.octave - targetNote.octave);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        best = note;
+                    }
+                }
+            }
+            // 如果没找到 (理论上不会)，返回一个同名的中央C附近
+            return best || { name, freq: 261.63 * Math.pow(2, (0/12)) };
+        }
+
+        // ---------- 播放 ----------
+        function playCurrentNote() {
+            if (!currentNote) return;
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().then(() => {
+                    playTone(currentNote.freq);
+                }).catch(e => console.log);
+            } else {
+                playTone(currentNote.freq);
+            }
+        }
+
+        // ---------- 生成题目 ----------
+        function generateQuestion() {
+            // 随机选择一个音 (C2 ~ C7 范围内所有半音)
+            currentNote = randomChoice(ALL_NOTES);
+            currentAnswerName = currentNote.name;
+            isAnswered = false;
+            isRevealed = false;
+
+            // 渲染选项
+            renderOptions();
+
+            // 清空反馈
+            feedbackArea.innerHTML = '';
+
+            // 播放新题目
+            playCurrentNote();
+        }
+
+        // ---------- 渲染选项 ----------
+        function renderOptions() {
+            optionsContainer.innerHTML = '';
+            OPTION_NAMES.forEach(name => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = name;
+                btn.dataset.name = name;
+                btn.addEventListener('click', () => {
+                    if (isAnswered || isRevealed) return;
+                    handleGuess(name, btn);
+                });
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        // ---------- 处理猜测 ----------
+        function handleGuess(guessName, btnElement) {
+            if (isAnswered || isRevealed) return;
+
+            const guessNote = getGuessNoteByName(guessName, currentNote);
+            const result = comparePitch(guessNote, currentNote);
+
+            if (result === 0) {
+                // 猜对了 (音名相同)
+                isAnswered = true;
+                feedbackArea.innerHTML = '<div class="feedback-correct">✓ 正确！就是 ' + currentAnswerName + '</div>';
+                // 高亮正确选项
+                document.querySelectorAll('.option-btn').forEach(btn => {
+                    btn.classList.add('disabled');
+                    if (btn.dataset.name === currentAnswerName) {
+                        btn.classList.add('correct');
+                    }
+                });
+                // 播放正确答案
+                playCurrentNote();
+            } else if (result > 0) {
+                // 猜高了
+                feedbackArea.innerHTML = '<div class="feedback-high">↑ 高了</div>';
+                playCurrentNote();
+                // 按钮闪红
+                btnElement.style.background = '#5a2a2a';
+                setTimeout(() => {
+                    if (btnElement) btnElement.style.background = '#202020';
+                }, 200);
+            } else {
+                // 猜低了
+                feedbackArea.innerHTML = '<div class="feedback-low">↓ 低了</div>';
+                playCurrentNote();
+                btnElement.style.background = '#2a3a5a';
+                setTimeout(() => {
+                    if (btnElement) btnElement.style.background = '#202020';
+                }, 200);
+            }
+        }
+
+        // ---------- 显示答案 ----------
+        function revealAnswer() {
+            if (isAnswered || isRevealed) return;
+            isRevealed = true;
+            feedbackArea.innerHTML = '<div class="feedback-reveal">答案：' + currentAnswerName + ' (八度: ' + currentNote.octave + ')</div>';
+            // 高亮正确选项
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.classList.add('disabled');
+                if (btn.dataset.name === currentAnswerName) {
+                    btn.classList.add('correct');
+                }
+            });
+            // 播放正确答案
+            playCurrentNote();
+        }
+
+        // ---------- 下一题 ----------
+        function nextQuestion() {
+            generateQuestion();
+        }
+
+        // ---------- 开始 / 菜单 ----------
+        function startGame() {
+            initAudio();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(e => console.log);
+            }
+            menuScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            generateQuestion();
+        }
+
+        function showMenu() {
+            menuScreen.classList.remove('hidden');
+            quizScreen.classList.add('hidden');
+        }
+
+        // ---------- 事件绑定 ----------
+        startBtn.addEventListener('click', startGame);
+        returnToMenuBtn.addEventListener('click', showMenu);
+        quizMenuBtn.addEventListener('click', showMenu);
+        nextQuestionBtn.addEventListener('click', nextQuestion);
+        playBtn.addEventListener('click', () => {
+            if (!currentNote) return;
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().then(() => playCurrentNote()).catch(e => console.log);
+            } else {
+                playCurrentNote();
+            }
+        });
+        revealBtn.addEventListener('click', revealAnswer);
+
+        // 预初始化音频
+        window.addEventListener('load', () => { initAudio(); });
+
+        console.log('🎧 听音选音已启动 · 中央C上下三个八度 · 三角波合成器音色');
+    })();
+</script>
+</body>
+</html>
