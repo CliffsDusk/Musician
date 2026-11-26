@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>和弦训练 · 极简爵士</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', 'Helvetica Neue', system-ui, -apple-system, sans-serif;
+            padding: 16px;
+        }
+
+        .container {
+            max-width: 720px;
+            width: 100%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .display-panel {
+            min-height: 320px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 24px 16px;
+            border-radius: 24px;
+        }
+
+        .chord-symbol {
+            font-size: 6rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+            line-height: 1.1;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+            word-break: break-word;
+            text-align: center;
+        }
+
+        .chord-detail {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .chord-chinese {
+            font-size: 1.5rem;
+            font-weight: 400;
+            color: #dddddd;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 6px;
+            width: fit-content;
+            margin: 0 auto;
+        }
+
+        .chord-notes {
+            font-size: 1.35rem;
+            color: #bbbbbb;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px 24px;
+            line-height: 1.6;
+            margin-top: 4px;
+        }
+
+        .note-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .note-name {
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .note-role {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            font-weight: 400;
+        }
+
+        .root-note {
+            color: #ffb347;
+            font-weight: 700;
+        }
+
+        .chord-scales {
+            font-size: 1rem;
+            color: #9f9f9f;
+            margin-top: 6px;
+            padding: 6px 16px;
+            border-radius: 40px;
+            background: #0e0e0e;
+            border: 1px solid #1e1e1e;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px 18px;
+            letter-spacing: 0.3px;
+        }
+
+        .scale-tag {
+            color: #c9c9c9;
+            white-space: nowrap;
+        }
+
+        .scale-tag::before {
+            content: '◆';
+            font-size: 0.6rem;
+            vertical-align: middle;
+            margin-right: 6px;
+            color: #555;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn {
+            background: #111;
+            border: 1.5px solid #2a2a2a;
+            color: #f0f0f0;
+            font-size: 2rem;
+            font-weight: 500;
+            padding: 16px 32px;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            box-shadow: 0 6px 0 #000000;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .btn:hover {
+            background: #1a1a1a;
+            border-color: #444;
+            transform: scale(1.02);
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+            background: #0a0a0a;
+        }
+
+        .btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            transform: none;
+            border-color: #222;
+            background: #0a0a0a;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 520px) {
+            .chord-symbol {
+                font-size: 4rem;
+            }
+            .chord-chinese {
+                font-size: 1.2rem;
+            }
+            .chord-notes {
+                font-size: 1.05rem;
+                gap: 8px 14px;
+            }
+            .chord-scales {
+                font-size: 0.85rem;
+                padding: 5px 12px;
+            }
+            .btn {
+                font-size: 1.7rem;
+                padding: 14px 26px;
+            }
+            .controls {
+                gap: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="display-panel" id="displayPanel">
+            <div class="chord-symbol" id="chordSymbol">🔑</div>
+            <div class="chord-detail hidden" id="chordDetail">
+                <div class="chord-chinese" id="chordChinese"></div>
+                <div class="chord-notes" id="chordNotes"></div>
+                <div class="chord-scales" id="chordScales"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn" id="startBtn" aria-label="随机和弦">🔑</button>
+            <button class="btn hidden" id="nextBtn" aria-label="下一个和弦">➡️</button>
+            <button class="btn hidden" id="playBtn" aria-label="重复播放">🔁</button>
+        </div>
+    </div>
+
+    <script>
+        (function(){
+            const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+            function midiToFreq(midi) {
+                return 440 * Math.pow(2, (midi - 69) / 12);
+            }
+
+            function noteToMidi(noteName, octave = 4) {
+                const base = { 'C':0, 'C#':1, 'Db':1, 'D':2, 'D#':3, 'Eb':3, 'E':4, 'F':5, 'F#':6, 'Gb':6, 'G':7, 'G#':8, 'Ab':8, 'A':9, 'A#':10, 'Bb':10, 'B':11 };
+                const semitone = base[noteName];
+                if (semitone === undefined) throw new Error('未知音名: ' + noteName);
+                return 12 * (octave + 1) + semitone;
+            }
+
+            const CHORD_TYPES = [
+                { symbol: '', suffix: 'maj', chinese: '大三和弦', intervals: [0, 4, 7], roles: ['根音', '三音', '五音'], scales: ['伊奥尼亚（大调音阶）', '利底亚'] },
+                { symbol: 'm', suffix: 'min', chinese: '小三和弦', intervals: [0, 3, 7], roles: ['根音', '三音', '五音'], scales: ['多利亚', '爱奥利亚（自然小调）'] },
+                { symbol: 'dim', suffix: 'dim', chinese: '减三和弦', intervals: [0, 3, 6], roles: ['根音', '三音', '五音'], scales: ['洛克里亚', '减音阶（全半）'] },
+                { symbol: 'aug', suffix: 'aug', chinese: '增三和弦', intervals: [0, 4, 8], roles: ['根音', '三音', '五音'], scales: ['全音阶', '增音阶'] },
+                { symbol: 'maj7', suffix: 'maj7', chinese: '大七和弦', intervals: [0, 4, 7, 11], roles: ['根音', '三音', '五音', '七音'], scales: ['伊奥尼亚', '利底亚'] },
+                { symbol: 'm7', suffix: 'min7', chinese: '小七和弦', intervals: [0, 3, 7, 10], roles: ['根音', '三音', '五音', '七音'], scales: ['多利亚', '爱奥利亚'] },
+                { symbol: '7', suffix: 'dom7', chinese: '属七和弦', intervals: [0, 4, 7, 10], roles: ['根音', '三音', '五音', '七音'], scales: ['混合利底亚', '变化音阶', '全音阶'] },
+                { symbol: 'm7b5', suffix: 'halfdim', chinese: '半减七和弦', intervals: [0, 3, 6, 10], roles: ['根音', '三音', '五音', '七音'], scales: ['洛克里亚', '洛克里亚♮2'] },
+                { symbol: 'dim7', suffix: 'dim7', chinese: '减七和弦', intervals: [0, 3, 6, 9], roles: ['根音', '三音', '五音', '七音'], scales: ['减音阶（全半）'] },
+                { symbol: 'mMaj7', suffix: 'minmaj7', chinese: '小大七和弦', intervals: [0, 3, 7, 11], roles: ['根音', '三音', '五音', '七音'], scales: ['爵士小调（旋律小调）'] },
+                { symbol: 'sus2', suffix: 'sus2', chinese: '挂二和弦', intervals: [0, 2, 7], roles: ['根音', '二音', '五音'], scales: ['混合利底亚', '伊奥尼亚'] },
+                { symbol: 'sus4', suffix: 'sus4', chinese: '挂四和弦', intervals: [0, 5, 7], roles: ['根音', '四音', '五音'], scales: ['混合利底亚', '伊奥尼亚'] },
+                { symbol: '6', suffix: 'maj6', chinese: '大六和弦', intervals: [0, 4, 7, 9], roles: ['根音', '三音', '五音', '六音'], scales: ['伊奥尼亚', '混合利底亚'] },
+                { symbol: 'm6', suffix: 'min6', chinese: '小六和弦', intervals: [0, 3, 7, 9], roles: ['根音', '三音', '五音', '六音'], scales: ['多利亚', '爵士小调'] },
+                { symbol: 'maj9', suffix: 'maj9', chinese: '大九和弦', intervals: [0, 4, 7, 11, 14], roles: ['根音', '三音', '五音', '七音', '九音'], scales: ['伊奥尼亚', '利底亚'] },
+                { symbol: 'm9', suffix: 'min9', chinese: '小九和弦', intervals: [0, 3, 7, 10, 14], roles: ['根音', '三音', '五音', '七音', '九音'], scales: ['多利亚'] },
+                { symbol: '9', suffix: 'dom9', chinese: '属九和弦', intervals: [0, 4, 7, 10, 14], roles: ['根音', '三音', '五音', '七音', '九音'], scales: ['混合利底亚'] },
+                { symbol: 'maj11', suffix: 'maj11', chinese: '大十一和弦', intervals: [0, 4, 7, 11, 14, 17], roles: ['根音', '三音', '五音', '七音', '九音', '十一音'], scales: ['伊奥尼亚', '利底亚'] },
+                { symbol: 'm11', suffix: 'min11', chinese: '小十一和弦', intervals: [0, 3, 7, 10, 14, 17], roles: ['根音', '三音', '五音', '七音', '九音', '十一音'], scales: ['多利亚'] },
+                { symbol: '11', suffix: 'dom11', chinese: '属十一和弦', intervals: [0, 4, 7, 10, 14, 17], roles: ['根音', '三音', '五音', '七音', '九音', '十一音'], scales: ['混合利底亚'] },
+                { symbol: 'maj13', suffix: 'maj13', chinese: '大十三和弦', intervals: [0, 4, 7, 11, 14, 17, 21], roles: ['根音', '三音', '五音', '七音', '九音', '十一音', '十三音'], scales: ['伊奥尼亚', '利底亚'] },
+                { symbol: 'm13', suffix: 'min13', chinese: '小十三和弦', intervals: [0, 3, 7, 10, 14, 17, 21], roles: ['根音', '三音', '五音', '七音', '九音', '十一音', '十三音'], scales: ['多利亚'] },
+                { symbol: '13', suffix: 'dom13', chinese: '属十三和弦', intervals: [0, 4, 7, 10, 14, 17, 21], roles: ['根音', '三音', '五音', '七音', '九音', '十一音', '十三音'], scales: ['混合利底亚'] },
+                { symbol: '7b9', suffix: '7b9', chinese: '属七降九和弦', intervals: [0, 4, 7, 10, 13], roles: ['根音', '三音', '五音', '七音', '降九音'], scales: ['半全减音阶', '弗里吉亚属（西班牙音阶）'] },
+                { symbol: '7#9', suffix: '7#9', chinese: '属七升九和弦', intervals: [0, 4, 7, 10, 15], roles: ['根音', '三音', '五音', '七音', '升九音'], scales: ['变化音阶', '半全减音阶'] },
+                { symbol: '7#11', suffix: '7#11', chinese: '属七升十一和弦', intervals: [0, 4, 7, 10, 18], roles: ['根音', '三音', '五音', '七音', '升十一音'], scales: ['利底亚属（原声大调）', '全音阶'] },
+                { symbol: '7b13', suffix: '7b13', chinese: '属七降十三和弦', intervals: [0, 4, 7, 10, 20], roles: ['根音', '三音', '五音', '七音', '降十三音'], scales: ['变化音阶', '全音阶'] },
+                { symbol: 'alt', suffix: 'alt', chinese: '变化属和弦', intervals: [0, 4, 7, 10, 13, 15, 20], roles: ['根音', '三音', '五音', '七音', '降九音', '升九音', '降十三音'], scales: ['变化音阶', '全音阶'] },
+            ];
+
+            const ROOT_NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+            let currentChord = null;
+            let isPlaying = false;
+
+            const chordSymbolEl = document.getElementById('chordSymbol');
+            const chordDetail = document.getElementById('chordDetail');
+            const chordChinese = document.getElementById('chordChinese');
+            const chordNotes = document.getElementById('chordNotes');
+            const chordScales = document.getElementById('chordScales');
+
+            const startBtn = document.getElementById('startBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const playBtn = document.getElementById('playBtn');
+
+            function generateRandomChord() {
+                const root = ROOT_NOTES[Math.floor(Math.random() * ROOT_NOTES.length)];
+                const chordType = CHORD_TYPES[Math.floor(Math.random() * CHORD_TYPES.length)];
+
+                let symbolSuffix = chordType.symbol;
+                if (chordType.symbol === '' && chordType.suffix === 'maj') {
+                    symbolSuffix = '';
+                }
+
+                const chordSymbol = root + symbolSuffix;
+
+                const rootMidi = noteToMidi(root, 4);
+                const midiNotes = chordType.intervals.map(interval => rootMidi + interval);
+                const freqs = midiNotes.map(m => midiToFreq(m));
+                const chineseName = root + ' ' + chordType.chinese;
+
+                currentChord = {
+                    root,
+                    type: chordType,
+                    symbol: chordSymbol,
+                    chinese: chineseName,
+                    intervals: chordType.intervals,
+                    roles: chordType.roles,
+                    scales: chordType.scales || [],
+                    midiNotes,
+                    freqs,
+                };
+
+                // 只显示符号，隐藏详细
+                chordSymbolEl.textContent = currentChord.symbol;
+                chordDetail.classList.add('hidden');
+            }
+
+            function renderDetail() {
+                if (!currentChord) return;
+
+                chordDetail.classList.remove('hidden');
+                chordChinese.textContent = currentChord.chinese;
+
+                let notesHtml = '';
+                currentChord.midiNotes.forEach((midi, index) => {
+                    const noteName = getNoteNameFromMidi(midi);
+                    const role = currentChord.roles[index];
+                    const isRoot = (index === 0);
+                    const noteClass = isRoot ? 'note-name root-note' : 'note-name';
+                    notesHtml += `
+                        <div class="note-item">
+                            <span class="${noteClass}">${noteName}</span>
+                            <span class="note-role">${role}</span>
+                        </div>
+                    `;
+                });
+                chordNotes.innerHTML = notesHtml;
+
+                let scalesHtml = '';
+                if (currentChord.scales.length > 0) {
+                    scalesHtml = currentChord.scales.map(s => `<span class="scale-tag">${s}</span>`).join('');
+                } else {
+                    scalesHtml = '<span class="scale-tag">—</span>';
+                }
+                chordScales.innerHTML = scalesHtml;
+            }
+
+            function getNoteNameFromMidi(midi) {
+                return NOTE_NAMES[midi % 12];
+            }
+
+            async function playChord() {
+                if (!currentChord || isPlaying) return;
+                isPlaying = true;
+                playBtn.disabled = true;
+                nextBtn.disabled = true;
+
+                try {
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    if (audioCtx.state === 'suspended') {
+                        await audioCtx.resume();
+                    }
+
+                    const now = audioCtx.currentTime;
+                    const freqs = currentChord.freqs;
+                    const noteCount = freqs.length;
+
+                    const masterGain = audioCtx.createGain();
+                    masterGain.gain.setValueAtTime(0.8, now);
+                    masterGain.connect(audioCtx.destination);
+
+                    // 分解和弦
+                    const arpeggioStart = now + 0.1;
+                    const noteDuration = 0.45;
+                    const gap = 0.18;
+
+                    freqs.forEach((freq, idx) => {
+                        const startTime = arpeggioStart + idx * gap;
+                        const osc = audioCtx.createOscillator();
+                        const gainNode = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, startTime);
+                        gainNode.gain.setValueAtTime(0, startTime);
+                        gainNode.gain.linearRampToValueAtTime(0.25, startTime + 0.02);
+                        gainNode.gain.setValueAtTime(0.25, startTime + noteDuration - 0.1);
+                        gainNode.gain.linearRampToValueAtTime(0, startTime + noteDuration);
+                        osc.connect(gainNode);
+                        gainNode.connect(masterGain);
+                        osc.start(startTime);
+                        osc.stop(startTime + noteDuration + 0.05);
+                    });
+
+                    // 柱式和弦
+                    const arpeggioEnd = arpeggioStart + (noteCount - 1) * gap + noteDuration;
+                    const blockStart = arpeggioEnd + 0.25;
+                    const blockDuration = 1.0;
+
+                    freqs.forEach((freq) => {
+                        const osc = audioCtx.createOscillator();
+                        const gainNode = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, blockStart);
+                        gainNode.gain.setValueAtTime(0, blockStart);
+                        gainNode.gain.linearRampToValueAtTime(0.2, blockStart + 0.03);
+                        gainNode.gain.setValueAtTime(0.2, blockStart + blockDuration - 0.15);
+                        gainNode.gain.linearRampToValueAtTime(0, blockStart + blockDuration);
+                        osc.connect(gainNode);
+                        gainNode.connect(masterGain);
+                        osc.start(blockStart);
+                        osc.stop(blockStart + blockDuration + 0.05);
+                    });
+
+                    const totalDuration = (blockStart - now + blockDuration + 0.2) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, totalDuration));
+
+                    await audioCtx.close();
+                } catch (e) {
+                    console.warn('音频播放失败:', e);
+                } finally {
+                    isPlaying = false;
+                    playBtn.disabled = false;
+                    nextBtn.disabled = false;
+                }
+            }
+
+            // 🔑 开始：生成和弦，只显示名字，切换按钮
+            function handleStart() {
+                if (isPlaying) return;
+                generateRandomChord();
+                startBtn.classList.add('hidden');
+                nextBtn.classList.remove('hidden');
+                playBtn.classList.remove('hidden');
+            }
+
+            // ➡️ 下一个：生成新和弦，只显示名字（隐藏详细）
+            function handleNext() {
+                if (isPlaying) return;
+                generateRandomChord();
+            }
+
+            // 点击和弦名本身（或点🔑后没有单独“下一步”？）
+            // 为了支持“先给和弦名再给下一步”，我们在和弦名区域加点击事件？但需求是“显示之后给两个按钮 重复播放和下一个”
+            // 且“再点一次，显示详细”。所以这里用两个按钮：第一个按钮🔑只负责生成名字；
+            // 生成后出现➡️（下一个）和🔁（重复播放）。但“再点一次显示详细”指的是什么呢？
+            // 仔细读需求：“先给和弦名再给下一步啊” — 意思是点击🔑后先出现名字，然后出现下一步按钮（➡️）和播放按钮（🔁）。
+            // 而“再点一次”指的是再点🔑？但🔑已经隐藏了。所以我们需要重新设计交互：
+            // 方案：🔑点击后生成名字，同时出现两个按钮：➡️（显示详细并播放？）和🔁（重复播放？）
+            // 但需求原文：“显示之后给两个按钮，重复播放（播放emoji）和下一个（箭头emoji）”
+            // 也就是说，点击🔑后，显示和弦名字，然后出现两个按钮：🔁和➡️。
+            // 那么“再点一次，显示详细的中文名...” 指的是再点🔑？但🔑已隐藏。所以应该理解为：点击🔑后，先显示名字；
+            // 然后用户点➡️（下一个）？不对，箭头是下一个。
+            // 我重新读：“先显示名称...然后再点一次，显示详细的中文名...然后用三角波演奏出来”
+            // 这是原始需求。后来要求：“把“显示和弦”改成🔑，显示之后给两个按钮，重复播放和下一个”
+            // 所以：点击🔑 -> 显示和弦名 -> 出现🔁和➡️两个按钮。
+            // 那么“再点一次显示详细”在哪里？应该是点🔁？还是点➡️？
+            // 我认为最合理的交互是：
+            // - 点击🔑：生成一个随机和弦，只显示名字，同时出现🔁和➡️按钮。
+            // - 点击🔁：显示详细（中文名、组成音、调式）并播放。
+            // - 点击➡️：生成下一个和弦，只显示名字（重置详细），同时保持两个按钮。
+            // 但这样“再点一次”就变成了点🔁，符合“再点一次显示详细并播放”。
+            // 而原始需求“先显示名称...然后再点一次”中的“点一次”是指点击同一个按钮。
+            // 但后来把按钮改成了🔑，并说“显示之后给两个按钮”，说明🔑点击后消失，出现两个新按钮。
+            // 因此，我采用如下逻辑：
+            // 1. 初始只有🔑按钮。
+            // 2. 点击🔑：生成随机和弦，只显示符号，隐藏详细。显示🔁和➡️按钮，隐藏🔑。
+            // 3. 点击🔁：显示详细并播放（如果详细已显示，则只重复播放）。
+            // 4. 点击➡️：生成下一个和弦，只显示符号（隐藏详细），不自动播放。
+            // 这样符合“先给和弦名再给下一步”（下一步就是点🔁看详细或点➡️换一个）。
+            // 同时“再点一次”可以理解为点🔁。
+
+            // 修改事件绑定：
+            function handlePlayBtn() {
+                if (isPlaying) return;
+                if (!currentChord) return;
+                // 如果详细未显示，先显示详细
+                if (chordDetail.classList.contains('hidden')) {
+                    renderDetail();
+                }
+                playChord();
+            }
+
+            function handleNextBtn() {
+                if (isPlaying) return;
+                generateRandomChord();
+                // 详细保持隐藏（generateRandomChord里已经隐藏了）
+                // 按钮保持不变
+            }
+
+            function init() {
+                startBtn.addEventListener('click', function() {
+                    if (isPlaying) return;
+                    generateRandomChord();
+                    startBtn.classList.add('hidden');
+                    nextBtn.classList.remove('hidden');
+                    playBtn.classList.remove('hidden');
+                });
+
+                playBtn.addEventListener('click', handlePlayBtn);
+                nextBtn.addEventListener('click', handleNextBtn);
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>
